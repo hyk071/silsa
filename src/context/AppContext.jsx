@@ -15,6 +15,8 @@ const initialState = {
   latlon: '',
   images: [],
   imagePreviews: [],
+  imageUrls: [],
+  googlePhotosItems: [],
   reports: [],
   isLoading: false,
   error: null,
@@ -44,6 +46,17 @@ function appReducer(state, action) {
       };
     case 'SET_IMAGES':
       return { ...state, images: action.payload.files, imagePreviews: action.payload.previews };
+    case 'ADD_IMAGE_URLS': {
+      const newUrls = (action.payload || []).filter(Boolean);
+      const merged = Array.from(new Set([...(state.imageUrls || []), ...newUrls]));
+      return { ...state, imageUrls: merged };
+    }
+    case 'CLEAR_IMAGE_URLS':
+      return { ...state, imageUrls: [] };
+    case 'SET_GOOGLE_PHOTOS_ITEMS':
+      return { ...state, googlePhotosItems: Array.isArray(action.payload) ? action.payload : [] };
+    case 'CLEAR_GOOGLE_PHOTOS_ITEMS':
+      return { ...state, googlePhotosItems: [] };
     case 'GENERATE_REPORT_SUCCESS':
       const newReport = action.payload;
       const otherReports = state.reports.filter((r) => r.model !== newReport.model);

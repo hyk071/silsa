@@ -2,19 +2,37 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import { AddressFinder } from './AddressFinder';
+import { GooglePhotosPicker } from './GooglePhotosPicker.jsx';
 import { PromptService } from '../prompts/promptService.js';
 
 export function ReportForm() {
   const { state, dispatch } = useAppContext();
   const { 
     selectedModel, availableModels, address, latlon, fieldMemo, 
-    promptUrl, basePrompt, imagePreviews, isAddressFinderOpen 
+    promptUrl, basePrompt, imagePreviews, isAddressFinderOpen, imageUrls 
   } = state;
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     const previewUrls = files.map((file) => URL.createObjectURL(file));
     dispatch({ type: 'SET_IMAGES', payload: { files, previews: previewUrls } });
+  };
+
+  const addImageUrls = () => {
+    const raw = (document.getElementById('image-urls')?.value || '').trim();
+    if (!raw) return;
+    const split = raw
+      .split(/\n|,/) // 줄바꿈 또는 콤마 구분
+      .map((s) => s.trim())
+      .filter((s) => s);
+    if (split.length === 0) return;
+    dispatch({ type: 'ADD_IMAGE_URLS', payload: split });
+  };
+
+  const clearImageUrls = () => {
+    dispatch({ type: 'CLEAR_IMAGE_URLS' });
+    const el = document.getElementById('image-urls');
+    if (el) el.value = '';
   };
 
   const loadPromptTemplate = async () => {
@@ -38,6 +56,9 @@ export function ReportForm() {
             dispatch({ type: 'SET_FIELD', field: 'isAddressFinderOpen', value: false });
           }}
         />
+      )}
+      {state.isGooglePhotosOpen && (
+        <GooglePhotosPicker onClose={() => dispatch({ type: 'SET_FIELD', field: 'isGooglePhotosOpen', value: false })} />
       )}
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-4 p-6 bg-gradient-to-br from-white to-gray-50 rounded-xl border border-gray-100">
@@ -91,6 +112,9 @@ export function ReportForm() {
         <div className="space-y-4 p-6 bg-gradient-to-br from-white to-gray-50 rounded-xl border border-gray-100">
           <label className="block text-sm font-medium text-gray-700 mb-1">현장/지도 사진 (여러 개 선택 가능)</label>
           <input type="file" id="images" multiple accept="image/png, image/jpeg" onChange={handleImageChange} className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-medium file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100" />
+          <div>
+            <button type="button" onClick={() => dispatch({ type: 'SET_FIELD', field: 'isGooglePhotosOpen', value: true })} className="btn-secondary mt-2">Google Photos에서 가져오기</button>
+          </div>
           {imagePreviews.length > 0 ? (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-2 max-h-48 overflow-y-auto p-2 bg-white rounded-md border">
               {imagePreviews.map((src, i) => (
@@ -100,6 +124,25 @@ export function ReportForm() {
           ) : (
             <div className="text-center text-gray-500 text-sm p-8 border-2 border-dashed rounded-md">이미지를 선택해주세요.</div>
           )}
+
+        <div className="mt-4 space-y-2">
+          <label htmlFor="image-urls" className="section-title">외부 이미지 URL (Google Drive 등) 입력</label>
+          <textarea id="image-urls" className="input h-24" placeholder="여러 URL을 줄바꿈 또는 콤마로 구분해서 붙여넣기"></textarea>
+          <div className="flex gap-2">
+            <button type="button" onClick={addImageUrls} className="btn-secondary">URL 추가</button>
+            <button type="button" onClick={clearImageUrls} className="btn-secondary">URL 초기화</button>
+          </div>
+          {imageUrls && imageUrls.length > 0 && (
+            <div className="text-xs text-gray-600">
+              <div className="mb-1">추가된 URL ({imageUrls.length})</div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-40 overflow-y-auto">
+                {imageUrls.map((u, i) => (
+                  <img key={i} src={u} alt={`ext ${i}`} className="w-full h-16 object-cover rounded-md border" />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
         </div>
       </div>
     </>

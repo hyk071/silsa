@@ -4,6 +4,7 @@ import { AppProvider, useAppContext } from './context/AppContext';
 import { PromptService } from './prompts/promptService.js';
 import { GenerativeApi } from './services/generativeApi.js';
 import { Modal } from './components/common/Modal';
+import { GooglePhotosService } from './services/googlePhotos.js';
 import { ApiKeyValidator } from './components/ApiKeyValidator';
 import { ReportForm } from './components/ReportForm';
 import { ReportView } from './components/ReportView';
@@ -22,6 +23,8 @@ function App() {
       (address && address.trim()) ||
       (latlon && latlon.trim()) ||
       (images && images.length > 0) ||
+      (state.imageUrls && state.imageUrls.length > 0) ||
+      (state.googlePhotosItems && state.googlePhotosItems.length > 0) ||
       (fieldMemo && fieldMemo.trim())
     );
     if (!isKeyValidated || !hasAnyContext) {
@@ -43,7 +46,16 @@ function App() {
 
     try {
       const prompt = PromptService.buildPromptWithContext(basePrompt, { address, latlon, fieldMemo });
-      const text = await GenerativeApi.generateContent({ apiKey: state.apiKey, model: selectedModel, prompt, images });
+      // Google Photos 항목을 inline parts로 변환하여 images/urlParts와 함께 사용
+      let googlePhotoParts = [];
+      if (state.googlePhotosItems && state.googlePhotosItems.length > 0) {
+        try {
+          googlePhotoParts = await GooglePhotosService.mediaItemsToInlineParts(state.googlePhotosItems);
+        } catch (e) {
+          console.warn('Google Photos 변환 실패(무시):', e?.message || e);
+        }
+      }
+      const text = await GenerativeApi.generateContent({ apiKey: state.apiKey, model: selectedModel, prompt, images, imageUrls: state.imageUrls, googleInlineParts: googlePhotoParts });
       const newReport = { model: selectedModel, text };
       dispatch({ type: 'GENERATE_REPORT_SUCCESS', payload: newReport });
     } catch (err) {
